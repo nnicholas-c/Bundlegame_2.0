@@ -1,44 +1,40 @@
 # Configuring the Game
 
-You will need the following data inside your `config.json` file:
+This project is meant to be tuned through JSON files, not through build tooling. The goal of this README is to show how every field in the active config affects the simulation.
 
-- `name`: string. Name of the configuration (e.g., "Phase 1 Lab Configuration")
+## Required fields inside `src/config.json`
 
-- `timeLimit`: integer. How long the game should run in seconds
-
-- `thinkTime`: integer. How many seconds the user gets to think before being able to select orders (timer is paused during this time)
-
-- `gridSize`: integer. Dimensions of the game grid.
-  - For example, `3` means a 3x3 grid.
-  - Maximum value is 9
-
-- `tips`: true/false. Whether tips are active during gameplay (i.e., prices change dynamically).
-  - Requires the `store` config to contain:
-    - `tip`: An array of percentages to increase the price (e.g., `[0.1, 0.2, 0.15]`)
-    - `tipinterval`: The interval (in seconds) between tip changes
-
-- `waiting`: true/false. Whether prices fluctuate while players are selecting orders (before the game starts).
-  - Requires the `store` config to contain:
-    - `waiting`: An array of percentages
-    - `waitinginterval`: Time interval for changes in price during the wait period
-
-- `refresh`: true/false. Whether orders can disappear (get taken) and then reappear as a new order.
+- **`name`** – Free-form label for the scenario (e.g., `"Phase 1 Lab Configuration"`). Appears only in data exports.
+- **`timeLimit`** – Integer (seconds). Once the timer reaches this value the game ends, Firebase stats are saved, and Qualtrics codes appear.
+- **`thinkTime`** – Integer (seconds). Amount of “free look” time before participants can select orders; the master timer pauses during this window.
+- **`gridSize`** – Integer between 1–9. Sets the number of rows/columns in the in-store grid. Your store layouts (`locations`) must match this size.
+- **`tips`** – Boolean toggle. When `true`, in-store payouts scale over time.
+  - Each store file used by this config must include:
+    - `tip`: array of percent increases (e.g., `[0, 10, 25]` means 0%, 10%, 25%).
+    - `tipinterval`: seconds between entries in the `tip` array.
+- **`waiting`** – Boolean. When `true`, prices can drift while the player is still on the order selection screen.
+  - Requires every referenced store config to include:
+    - `waiting`: array of percent adjustments to earnings.
+    - `waitinginterval`: seconds between shifts.
+- **`refresh`** – Boolean. Lets orders disappear and later respawn as new ones.
   - Requires:
-    - `demand` in the order config: Probability (per second) that an order disappears
-    - `refresh` in the store config: Time (in seconds) before a disappeared order is refreshed
+    - `demand` inside each order (probability per second that the order vanishes).
+    - `refresh` inside the store config (seconds before a replacement order is queued).
+- **`expire`** – Boolean. Controls whether an order’s `expire` counter is enforced across refresh cycles. If `false`, orders behave as though `expire = 1` (single opportunity).
+- **`conditions`** – Array of scenarios. Each object needs:
+  - `name`: short label for analytics.
+  - `order_file`: filename inside `src/lib/configs/` that lists orders.
+  - `store_file`: matching store layout file in the same folder.
+  - The loader increments a Firestore counter and assigns participants the next condition. If you only have one setup, keep this array length 1.
+- **`auth`** – Boolean. Set to `true` when running real studies so `/login` gates the game behind a user ID + token. Set to `false` only for tutorials/demos.
+- **`breakDuration`** (optional) – Seconds to wait before the next job arrives after finishing an order.
+- **`companies`** – Array describing the incentive models shown on the homepage. Each entry needs:
+  - `id`: stable key (also used in order files if you want company-specific queues).
+  - `name` / `description`: text on the button.
+  - `payment_type`: `"per_job"` or `"hourly"`.
+  - `hourlyRate`: dollar amount per hour when `payment_type` is `"hourly"`.
 
-- `expire`: true/false. Whether unselected order(s) can appear after a game round. They stop showing (expire) after x amount of rounds. If false, this is essentially the same as x = 1.
-
-- `conditions`:
-  - An array of condition objects that define setups
-  - Each object needs `name`, `order_file`, and `store_file`
-  - Each condition will use a different `order_file` and `store_file` combination when assigned during game start
-  - If you are not testing conditions, this should be length 1
-  - The conditions will always alternate between users
-
-- `auth`: true if it requires login. (should always be true unless tutorial)
-
-## Example
+## Example config
 
 ```json
 {
@@ -61,8 +57,36 @@ You will need the following data inside your `config.json` file:
       "order_file": "order.json",
       "store_file": "stores2.json"
     }
-  ]
+  ],
+  "auth": true
 }
 ```
 
-For data analysis, the first condition is denoted configuration "0" and the second condition is denoted configuration "2"
+For data analysis, condition index `0` corresponds to the first entry, and condition index `2` corresponds to the second entry (mirroring the naming convention used in the existing CSVs).
+
+## Linking configs to data files
+
+- **Order files (`src/lib/configs/order*.json`)**
+  - Each object must include `id`, `name`, `store`, `city`, `earnings`, `items`, `expire`, and optionally `demand` + `companyId`.
+  - If `refresh` is `true`, every order needs a `demand` probability so the disappearance logic can run.
+- **Store files (`src/lib/configs/stores*.json`)**
+  - Provide a `stores` array where each store defines `store`, `city`, `items`, `locations`, `Entrance`, and `cellDistance`.
+  - Optional tuning fields (`tip`, `tipinterval`, `waiting`, `waitinginterval`, `refresh`) must be present when the matching global toggles are enabled.
+  - `distances` maps every city to travel options, and `startinglocation` seeds the player’s first city.
+
+## How the game uses these values
+
+- During login/startup, the app imports `config.json`, loads the appropriate `order_file` + `store_file` pair for the assigned condition, and writes the condition index back to Firestore.
+- `gridSize` dictates how many columns the in-store grid renders in `src/routes/bundlegame.svelte`; if the store’s `locations` array is larger/smaller, cells will misalign.
+- `tips`, `waiting`, and `refresh` toggles simply enable or skip code paths—if the supporting arrays are missing, the game throws runtime errors. Always keep the arrays and intervals in lockstep with the toggle values.
+- `conditions` alternate between users because the Firestore counter increments globally. If you prefer random assignment, change the logic inside `loadGame()` in `src/lib/bundle.js`.
+- `auth` gates routes: when `true`, unauthenticated users are redirected to `/login`, and gameplay logs (`addAction`, `addOrder`) are written for every interaction.
+
+## Editing workflow tips
+
+1. Update `config.json` when changing global behavior (timer lengths, toggles, store/order pairings).
+2. Add/modify order or store JSON files under `src/lib/configs/`, then point the condition entries at the new filenames.
+3. Keep IDs stable so Firestore analytics remain consistent across sessions.
+4. Exported data uses the numerical condition index (0, 2, ...). Note which scenario maps to which index before running studies so downstream analysis is correct.
+
+This README intentionally focuses on gameplay configuration. Build instructions, dependency management, and deployment steps are omitted so you can concentrate on the variables that change how the simulation behaves.
