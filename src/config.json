@@ -1,0 +1,40 @@
+{
+  "name": "Phase 1 Lab Configuration",
+  "timeLimit": 1200,
+  "thinkTime": 10,
+  "gridSize": 3,
+  "tips": false,
+  "waiting": false,
+  "refresh": false,
+  "expire": false,
+  "conditions": [
+    {
+      "name": "Shorter cell distances",
+      "order_file": "order.json",
+      "store_file": "stores1.json"
+    },
+    {
+      "name": "Longer cell distances",
+      "order_file": "order.json",
+      "store_file": "stores2.json"
+    }
+  ],
+  "auth": true,
+  "breakDuration": 5,
+  "companies": [
+    {
+      "id": "uber",
+      "name": "Company X",
+      "payment_type": "per_job",
+      "description": "Earn per completed task with variable payouts.",
+      "hourlyRate": 0
+    },
+    {
+      "id": "lyft",
+      "name": "Company Y",
+      "payment_type": "hourly",
+      "description": "Guaranteed hourly pay while you stay online.",
+      "hourlyRate": 20
+    }
+  ]
+}

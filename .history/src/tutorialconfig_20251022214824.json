@@ -1,0 +1,35 @@
+{
+  "name": "Tutorial",
+  "timeLimit": 120,
+  "thinkTime": 2,
+  "gridSize": 2,
+  "tips": false,
+  "waiting": false,
+  "refresh": false,
+  "expire": false,
+  "conditions": [
+    {
+      "name": "Tutorial",
+      "order_file": "order.json",
+      "store_file": "stores.json"
+    }
+  ],
+  "auth": false,
+  "breakDuration": 5,
+  "companies": [
+    {
+      "id": "uber",
+      "name": "Company X",
+      "payment_type": "per_job",
+      "description": "Per-task payouts for quick experimentation.",
+      "hourlyRate": 0
+    },
+    {
+      "id": "lyft",
+      "name": "Company Y",
+      "payment_type": "hourly",
+      "description": "Hourly guarantees to illustrate stability.",
+      "hourlyRate": 20
+    }
+  ]
+}
