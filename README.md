@@ -88,5 +88,3 @@ For data analysis, condition index `0` corresponds to the first entry, and condi
 2. Add/modify order or store JSON files under `src/lib/configs/`, then point the condition entries at the new filenames.
 3. Keep IDs stable so Firestore analytics remain consistent across sessions.
 4. Exported data uses the numerical condition index (0, 2, ...). Note which scenario maps to which index before running studies so downstream analysis is correct.
-
-This README intentionally focuses on gameplay configuration. Build instructions, dependency management, and deployment steps are omitted so you can concentrate on the variables that change how the simulation behaves.
